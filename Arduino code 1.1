@@ -1,0 +1,121 @@
+// Para corre este codigo necesitaras la libreria "logicalPins.h" version 1.1
+#include <EEPROM.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
+#include "logicalPins.h"
+#include "Server.h"
+//Puertos
+
+
+int sensorMagnetico = D3;
+int sensorMovimiento = D5;
+int buzzer = D6;
+
+//Varibles de funcionamiento
+int Codigo = 1900; // Codigo para activar y desactivar
+int armada = 0; // para saber si esta ON o OFF
+String Armar; // para armar o desarmar la alarma
+int ArmarInt; //"" pero en int
+int command; // State pero en int y mantiene el ultimo estado simpre y cuando sea distinto a none  
+int noRepet;  //Solo para no espamear por serial
+String State; //codigo escrito
+String Cambio; // Para cambiar la pasword
+int CambioInt; // "" en int
+int NoRepT ; //Para no repeti en caso de true en el armado
+int NoRepF ;//Para no repeti en caso de false en el armado
+
+//Puerto para leer en el server
+ESP8266WebServer server(80);
+
+//PASSWORD Y NOMBRE DE LA WIFI
+const char* SSIDNAME = "weamos"; // 
+const char* PASSWORD = "hola151620";
+
+void setup_server(){
+
+  
+  // Conectar a wifi
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(SSIDNAME,PASSWORD);
+  IPAddress myIP = WiFi.softAPIP();
+  //("AP IP address: ");
+  Serial.println(myIP);
+ 
+ // Starting WEB-server
+     //prende el server
+     server.on ( "/", HTTP_handleRoot );
+     //si no funciona el server
+     server.onNotFound ( HTTP_handleRoot );
+     //velocidad del server
+     server.begin();    
+}
+
+
+void HTTP_handleRoot(void) {
+  if (armada == 1){
+    server.send( 200, "text/html","1" );
+    }
+
+  else if (armada == 0){
+    server.send( 200, "text/html","0" );
+    }
+  }
+void setup() {
+
+  Serial.begin(9600);
+  // Configuro los pines de entrada y salida
+  pinMode(sensorMagnetico , INPUT_PULLUP);
+  pinMode(sensorMovimiento ,INPUT);
+  setup_server();
+}
+
+
+void loop(){
+      //inicia el server
+      server.handleClient();
+
+     
+      //recoje la informacion enviada por la app
+      State = server.arg("State");
+      if (State.toInt() > 0){
+        command = State.toInt();
+      }
+      Cambio = server.arg("Cambio");
+      CambioInt = Cambio.toInt();
+      
+      Armar = server.arg("Armar");
+      ArmarInt = Armar.toInt();
+  
+      
+            
+      if (command == Codigo && ArmarInt == 0 && NoRepF != 1){
+       armada = 0; 
+       command = 0;
+       HTTP_handleRoot();
+       Serial.print("False: ");
+       Serial.println(armada);
+       NoRepF = 1;
+       NoRepT = 0;
+            }
+      else if(command  == Codigo && ArmarInt == 1 && NoRepT != 1){
+       armada = 1;
+       command = 0;
+       HTTP_handleRoot();
+       Serial.print("True: ");
+       Serial.println(armada);
+       NoRepT = 1;
+       NoRepF = 0;
+            }
+       
+      if(command > noRepet || command < noRepet){
+        Serial.println(command);
+        noRepet = command;
+            }
+      
+      if (statusMagnetico(sensorMagnetico) == 0 && statusMovimiento(sensorMovimiento) && 0);{
+      while (1 == 1){
+        sound(buzzer);
+                    }
+             }
+      }
