@@ -1,0 +1,18 @@
+bool statusMovimiento(int pinSensor){
+  bool sensor = digitalRead(pinSensor);
+  return sensor;}
+
+
+
+bool statusMagnetico (int pinSensor){
+  bool sensor =! digitalRead(pinSensor);
+  return sensor;}
+
+
+void sound(int pinBuzzerd){
+  digitalWrite(pinBuzzerd , HIGH);
+  delay(1000);
+  digitalWrite(pinBuzzerd , LOW);
+  delay(1000);
+}
+
