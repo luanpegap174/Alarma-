@@ -1,0 +1,175 @@
+ #include <dummy.h>
+#include <EEPROM.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
+#include "logicalPins.h"
+#include "Server.h"
+//Puertos
+
+
+int sensorMagnetico = D3;
+int sensorMovimiento = D5;
+int buzzer = D7;
+
+//Varibles de funcionamiento
+int Codigo = 1900; // Codigo para activar y desactivar
+int armada = 0; // para saber si esta ON o OFF
+int armadahttp = 0;
+String Armar; // para armar o desarmar la alarma
+int ArmarInt; //"" pero en int
+int command; // State pero en int y mantiene el ultimo estado simpre y cuando sea distinto a none
+int noRepet;  //Solo para no espamear por serial
+String State; //codigo escrito
+String Cambio; // Para cambiar la pasword
+int CambioInt; // "" en int
+int NoRepT ; //Para no repeti en caso de true en el armado
+int NoRepF ;//Para no repeti en caso de false en el armado
+
+//Puerto para leer en el server
+ESP8266WebServer server(80);
+
+//PASSWORD Y NOMBRE DE LA WIFI
+const char* SSIDNAME = "weamos";
+const char* PASSWORD = "hola151620";
+
+void setup_server() {
+
+
+  // Conectar a wifi
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(SSIDNAME, PASSWORD);
+  IPAddress myIP = WiFi.softAPIP();
+  //("AP IP address: ");
+  Serial.println(myIP);
+
+  // Starting WEB-server
+  //prende el server
+  server.on ( "/", HTTP_handleRoot );
+  //si no funciona el server
+  server.onNotFound ( HTTP_handleRoot );
+  //velocidad del server
+  server.begin();
+}
+
+
+void HTTP_handleRoot(void) {
+  if (armadahttp == 1 ) {
+    server.send( 200, "text/html", "1" );
+    armadahttp == 2;}
+  
+
+  else if (armadahttp == 0) {
+    server.send( 200, "text/html", "0" );
+    armadahttp == 2;
+  }
+}
+void setup() {
+
+  Serial.begin(9600);
+  // Configuro los pines de entrada y salida
+  pinMode(sensorMagnetico , INPUT_PULLUP);
+  pinMode(sensorMovimiento , INPUT);
+  pinMode(buzzer , OUTPUT);
+  setup_server();
+
+}
+
+
+void loop() {
+
+
+  server.handleClient();
+
+  //recoje la informacion enviada por la app
+  State = server.arg("State");
+
+  if (State.toInt() > 0) {
+    command = State.toInt();
+  }
+  Cambio = server.arg("Cambio");
+  CambioInt = Cambio.toInt();
+
+  Armar = server.arg("Armar");
+  ArmarInt = Armar.toInt();
+
+
+
+  if (command == Codigo && ArmarInt == 0 && NoRepF != 1) {
+    armada = 0;
+    armadahttp = 0;
+    command = 0;
+    HTTP_handleRoot();
+    Serial.print("False: ");
+    Serial.println(armada);
+    NoRepF = 1;
+    NoRepT = 0;
+
+  }
+  else if (command  == Codigo && ArmarInt == 1 && NoRepT != 1) {
+    armada = 1;
+    armadahttp = 1;
+    command = 0;
+    HTTP_handleRoot();
+    Serial.print("True: ");
+    Serial.println(armada);
+    NoRepT = 1;
+    NoRepF = 0;
+  }
+
+  if (command > noRepet || command < noRepet) {
+    Serial.println(command);
+    noRepet = command;
+  }
+ if ( armada == 1){
+  if (statusMagnetico(sensorMagnetico) != 1 or statusMovimiento(sensorMovimiento) == 1) {
+  bool sonido = true;
+  while (sonido) {
+      digitalWrite(buzzer , 1);
+      delay(1000);
+      digitalWrite(buzzer, 0);
+      delay(1000);
+
+      server.handleClient();
+      State = server.arg("State");
+      Serial.println("jijija");
+      if (State.toInt() > 0) {
+      command = State.toInt();
+
+      }
+      if (command == 1900) {
+        ESP.restart();
+      }
+    }
+  }
+ }
+}
+
+
+
+
+
+
+
+
+
+Libreria LOGICAL PINS
+
+
+bool statusMovimiento(int pinSensor){
+  bool sensor = digitalRead(pinSensor);
+  Serial.println(sensor);
+  return sensor;}
+
+
+bool statusMagnetico (int pinSensor){
+  bool sensor =! digitalRead(pinSensor);
+  return sensor;}
+
+
+void sound(int pinBuzzerd){
+  digitalWrite(pinBuzzerd , HIGH);
+  delay(1000);
+  digitalWrite(pinBuzzerd , LOW);
+  delay(1000);
+}
